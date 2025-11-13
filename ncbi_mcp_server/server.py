@@ -283,6 +283,7 @@ async def blast_search(
     word_size: Optional[int] = None,
     matrix: Optional[str] = None,
     gap_costs: Optional[str] = None,
+    output_fmt: str = "full",
 ) -> str:
     """
     Perform BLAST search using NCBI BLAST.
@@ -295,6 +296,7 @@ async def blast_search(
         word_size: Word size for BLAST search (optional)
         matrix: Scoring matrix (optional, e.g., BLOSUM62)
         gap_costs: Gap costs (optional, e.g., "11 1")
+        output_fmt: Output format ("full" includes alignment strings, "summary" omits them)
 
     Returns:
         JSON string with BLAST results
@@ -303,6 +305,9 @@ async def blast_search(
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
     try:
+        if output_fmt not in {"full", "summary"}:
+            raise ValueError("Invalid output_fmt value. Must be 'full' or 'summary'.")
+
         result = await ncbi_client.blast_search(
             program=program,
             database=database,
@@ -311,6 +316,7 @@ async def blast_search(
             word_size=word_size,
             matrix=matrix,
             gapcosts=gap_costs,
+            output_fmt=output_fmt,
         )
 
         return json.dumps(

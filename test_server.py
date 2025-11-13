@@ -60,13 +60,48 @@ async def test_ncbi_client():
                 print(f"   ❌ Error: {e}")
             print()
 
-        # Test 4: Simple BLAST (this might take a while)
-        print("4️⃣ Testing BLAST search (this may take 30+ seconds)...")
+        # blast test sequence
+        test_sequence = "".join((
+            "GGAGGAGGAGGAGGAAGAAGAAGAGGTGGAAGAGGAGGAGGAGAAAGTAGAGGAGGAAGAGGAAGCGGAG",
+            "AAGGCGAAAACGAGCGGAAAGCGGACGGTTATCGGGAGTGGAAGAAGAGAGAGTGGCCAGGTGTGTCGCG",
+            "GCTTCGCCGAGAAGGAGGAAGAGAACGTGGTGGAGGTCGTGGTGTGTCGTTGACGAAGAAGAAGGAAAGG",
+            "AAAGAAGGTGGAGGAAGACGAGGAAGAAGAAAAGGAAGGTAGTGCTTGCTGCTCGGAGGTTGCGCAGAGA"
+        ))
+
+        # Test 4: Simple BLAST summary (this might take a while)
+        print("4️⃣ Testing BLAST search - summary output (this may take 30+ seconds)...")
         try:
             blast_result = await client.blast_search(
                 program="blastn",
                 database="nt",
-                sequence="ATCGATCGATCGATCGATCG",  # Simple test sequence
+                sequence=test_sequence,  # Simple test sequence
+                expect=10.0,
+                output_fmt="summary",
+            )
+            if blast_result.status == "completed":
+                print("   ✅ BLAST search completed successfully")
+                if blast_result.results and "records" in blast_result.results:
+                    records = blast_result.results["records"]
+                    print(f"   🎯 Found {len(records)} alignment records")
+                hsp0 = blast_result.results["records"][0]["alignments"][0]["hsps"][0]
+                for key in ('query','match','sbjct'):
+                    if key not in hsp0:
+                        print(f"   🎯 '{key}' NOT in hsps.")
+                    else:
+                        print(f"   ❌ '{key}' present in 'hsps' output, despite 'summary' output_fmt") 
+            else:
+                print(f"   ⚠️ BLAST status: {blast_result.status}")
+        except Exception as e:
+            print(f"   ❌ BLAST Error: {e}")
+        print()
+
+        # Test 5: Simple BLAST full alignments(this might take a while)
+        print("5 Testing BLAST search - full alignment output (this may take 30+ seconds)...")
+        try:
+            blast_result = await client.blast_search(
+                program="blastn",
+                database="nt",
+                sequence=test_sequence,  # Simple test sequence
                 expect=10.0,
             )
             if blast_result.status == "completed":
@@ -74,6 +109,14 @@ async def test_ncbi_client():
                 if blast_result.results and "records" in blast_result.results:
                     records = blast_result.results["records"]
                     print(f"   🎯 Found {len(records)} alignment records")
+                # check that alignments are present (full mode)
+                hsp0 = blast_result.results["records"][0]["alignments"][0]["hsps"][0]
+                for key in ('query','match','sbjct'):
+                    if key in hsp0:
+                        print(f"   🎯 '{key}' present in hsps.")
+                    else:
+                        print(f"   ❌ '{key}' missing from hsps in 'full' output mode.") 
+
             else:
                 print(f"   ⚠️ BLAST status: {blast_result.status}")
         except Exception as e:

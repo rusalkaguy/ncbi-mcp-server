@@ -279,10 +279,15 @@ class NCBIClient:
         word_size: Optional[int] = None,
         matrix: Optional[str] = None,
         gapcosts: Optional[str] = None,
+        output_fmt: str = "full",
     ) -> BlastResult:
         """Submit a BLAST search."""
         # Use Biopython's BLAST interface
         try:
+            # validate params
+            if output_fmt not in {"full", "summary"}:
+                raise ValueError("Invalid output_fmt value. Must be 'full' or 'summary'.")
+            
             # Submit BLAST job
             result_handle = NCBIWWW.qblast(
                 program=program,
@@ -323,10 +328,13 @@ class NCBIClient:
                             "query_end": hsp.query_end,
                             "sbjct_start": hsp.sbjct_start,
                             "sbjct_end": hsp.sbjct_end,
-                            "query": hsp.query,
-                            "match": hsp.match,
-                            "sbjct": hsp.sbjct,
                         }
+                        if output_fmt == 'full':
+                            hsp_data.update({
+                                "query": hsp.query,
+                                "match": hsp.match,
+                                "sbjct": hsp.sbjct,
+                            })
                         alignment_data["hsps"].append(hsp_data)
 
                     record_data["alignments"].append(alignment_data)
