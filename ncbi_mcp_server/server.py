@@ -403,6 +403,7 @@ async def get_blast_programs_resource() -> str:
 - **blastn**: Nucleotide-nucleotide BLAST
   - Compares nucleotide query sequences against nucleotide sequence databases
   - Best for DNA/RNA sequences
+  - megablast option available only on blastn for highly similar sequences
 
 - **blastp**: Protein-protein BLAST  
   - Compares amino acid query sequences against protein sequence databases
@@ -411,6 +412,7 @@ async def get_blast_programs_resource() -> str:
 - **blastx**: Nucleotide-protein BLAST
   - Compares nucleotide query sequences translated in all frames against protein databases
   - Useful for finding protein matches for DNA sequences
+  - Good for gene prediction from short nucleotide sequences; long sequences may fail due to resource limits
 
 - **tblastn**: Protein-nucleotide BLAST
   - Compares protein query sequences against nucleotide databases translated in all frames
@@ -434,12 +436,24 @@ async def get_blast_programs_resource() -> str:
 - **swissprot**: SwissProt protein sequences
 
 ## Usage Example
+-- **slow** search for distant nucleotide homology with full alignments returned
 ```
 blast_search(
     program="blastn",
     database="nt", 
     sequence="ATCGATCGATCG",
     expect_value=0.001
+)
+```
+-- **fast** run a megablast search for very similar nucleotide sequences, only hit metadata returned, no alignement strings
+```
+blast_search(
+    program="blastn",
+    database="nt", 
+    sequence="ATCGATCGATCG",
+    expect_value=0.001
+    output_fmt="summary",
+    megablast=True
 )
 ```
 """
