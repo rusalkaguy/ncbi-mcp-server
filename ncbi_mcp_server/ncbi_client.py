@@ -1,6 +1,7 @@
 """NCBI E-utilities and BLAST client for MCP server."""
 
 import asyncio
+import logging
 import os
 import tempfile
 import time
@@ -12,6 +13,9 @@ import xmltodict
 from Bio import SeqIO
 from Bio.Blast import NCBIWWW, NCBIXML
 from pydantic import BaseModel
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class NCBIConfig(BaseModel):
@@ -63,6 +67,7 @@ class NCBIClient:
     def __init__(self, config: NCBIConfig):
         self.config = config
         self.client = httpx.AsyncClient(timeout=30.0)
+        logger.debug(f"Initialized NCBIClient with base_url={config.base_url}")
 
     async def __aenter__(self):
         return self
@@ -84,6 +89,8 @@ class NCBIClient:
     ) -> Dict[str, Any]:
         """Make an HTTP request to NCBI E-utilities."""
         url = f"{self.config.base_url}/{endpoint}.fcgi"
+        
+        logger.debug(f"Making request to {endpoint} with params: {params}")
 
         # Add rate limiting if no API key
         if not self.config.api_key:
@@ -93,6 +100,8 @@ class NCBIClient:
 
         response = await self.client.get(url, params=params)
         response.raise_for_status()
+        
+        logger.debug(f"Received response from {endpoint}, status={response.status_code}")
 
         # Parse XML response
         return xmltodict.parse(response.text)

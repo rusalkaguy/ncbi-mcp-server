@@ -17,6 +17,11 @@ A Model Context Protocol (MCP) server that provides access to NCBI E-utilities a
 - **ncbi://databases** - Comprehensive list of NCBI databases with descriptions
 - **ncbi://blast-programs** - Guide to BLAST programs and databases
 
+### 🔧 **Server Capabilities**
+- **Logging** - Dynamic log level control via MCP protocol
+- **Tools** - Exposes 7 powerful NCBI tools
+- **Resources** - Provides documentation resources
+
 ### 🧠 **Agentic Behavior Examples**
 
 When you ask Claude Desktop questions, it will intelligently use multiple tools together:
@@ -68,6 +73,7 @@ pip install -e .
    # Edit .env with your credentials
    export NCBI_API_KEY="your_api_key_here"
    export NCBI_EMAIL="your.email@example.com"
+   export FASTMCP_LOG_LEVEL="INFO"  # Optional: DEBUG, INFO, WARNING, ERROR, CRITICAL (Python log levels)
    ```
 
 ### Usage with Claude Desktop
@@ -86,7 +92,8 @@ pip install -e .
          "args": ["/path/to/ncbi_mcp_server/server.py"],
          "env": {
            "NCBI_API_KEY": "your_api_key",
-           "NCBI_EMAIL": "your.email@example.com"
+           "NCBI_EMAIL": "your.email@example.com",
+           "FASTMCP_LOG_LEVEL": "INFO"
          }
        }
      }
@@ -110,6 +117,13 @@ Run with custom environment:
 ```bash
 NCBI_API_KEY=your_key mcp dev ncbi_mcp_server/server.py
 ```
+
+Verify server capabilities:
+```bash
+python3 test_capabilities.py
+```
+
+This will show you all the capabilities the server advertises, including logging support.
 
 ## Supported NCBI Databases
 
@@ -180,6 +194,57 @@ User: "Compare the genome assemblies of different E. coli strains"
 
 ## Troubleshooting
 
+### Logging Configuration
+
+The server supports configurable log levels through FastMCP's built-in logging system:
+
+**Server Capabilities:**
+The server advertises its logging capability during the MCP initialization handshake. When a client connects, the server responds with:
+
+```json
+{
+  "capabilities": {
+    "logging": {},
+    "tools": { "listChanged": false },
+    "resources": { "subscribe": false, "listChanged": false }
+  }
+}
+```
+
+The `logging` capability indicates that clients can:
+- Send `logging/setLevel` requests to change the server's minimum log level
+- Receive log messages from the server via `notifications/message` notifications
+
+**MCP Protocol Log Levels (lowercase per spec):**
+- `debug` - Detailed information for diagnosing problems (API calls, parameters, responses)
+- `info` - General informational messages (default - server startup, tool invocations)
+- `warning` - Warning messages for potentially problematic situations
+- `error` - Error messages for serious problems
+- `critical` - Critical errors that may cause the server to stop
+
+**Set via environment variable (uses uppercase Python convention):**
+```bash
+export FASTMCP_LOG_LEVEL="DEBUG"
+```
+
+**Or in Claude Desktop config:**
+```json
+{
+  "mcpServers": {
+    "ncbi": {
+      "env": {
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      }
+    }
+  }
+}
+```
+
+**Dynamic Log Level Changes:**
+MCP clients like Claude Desktop can send a `logging/setLevel` request with lowercase level names (e.g., `debug`, `info`) to change the server's minimum log level at runtime, without requiring a server restart. The server will then only send log messages at or above the specified level via `notifications/message` notifications.
+
+Logs are written to stderr and will appear in the MCP client logs (e.g., Claude Desktop logs).
+
 ### Common Issues
 
 1. **Rate Limiting Errors**
@@ -194,13 +259,7 @@ User: "Compare the genome assemblies of different E. coli strains"
 3. **Connection Errors**
    - Check internet connectivity
    - Verify NCBI services are operational
-
-### Debug Mode
-
-Run with verbose logging:
-```bash
-DEBUG=1 mcp dev ncbi_mcp_server/server.py
-```
+   - Enable DEBUG logging to see detailed error information
 
 ## Contributing
 

@@ -1,6 +1,7 @@
 """NCBI MCP Server - Main server implementation."""
 
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
@@ -9,6 +10,9 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 
 from ncbi_mcp_server.ncbi_client import NCBIClient, NCBIConfig
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class ServerContext(BaseModel):
@@ -22,14 +26,21 @@ class ServerContext(BaseModel):
 @asynccontextmanager
 async def server_lifespan(server: FastMCP):
     """Manage server lifecycle with NCBI client."""
+    logger.info("Starting NCBI MCP Server")
+    
     # Initialize NCBI client
     config = NCBIConfig(
         api_key=os.getenv("NCBI_API_KEY"),
         email=os.getenv("NCBI_EMAIL", "user@example.com"),
     )
+    
+    logger.debug(f"NCBI Configuration: email={config.email}, has_api_key={bool(config.api_key)}")
 
     async with NCBIClient(config) as ncbi_client:
+        logger.info("NCBI client initialized successfully")
         yield ServerContext(ncbi_client=ncbi_client)
+    
+    logger.info("NCBI MCP Server shutting down")
 
 
 # Initialize MCP server
@@ -69,6 +80,9 @@ async def search_ncbi(
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info(f"Searching NCBI database '{database}' with query: {query[:100]}")
+    logger.debug(f"Search parameters: max_results={max_results}, start_index={start_index}, sort_order={sort_order}")
+    
     try:
         result = await ncbi_client.search(
             database=database,
@@ -77,6 +91,8 @@ async def search_ncbi(
             retstart=start_index,
             sort=sort_order,
         )
+        
+        logger.info(f"Search completed: {len(result.ids)} results returned (total: {result.count})")
 
         return json.dumps(
             {
@@ -95,6 +111,7 @@ async def search_ncbi(
         )
 
     except Exception as e:
+        logger.error(f"Search failed for database '{database}': {str(e)}", exc_info=True)
         return json.dumps(
             {"success": False, "error": str(e), "database": database, "query": query},
             indent=2,
@@ -120,14 +137,19 @@ async def fetch_records(
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info(f"Fetching {len(ids)} records from database '{database}'")
+    logger.debug(f"Fetch parameters: return_type={return_type}, return_mode={return_mode}")
+    
     try:
         result = await ncbi_client.fetch(
             database=database, ids=ids, rettype=return_type, retmode=return_mode
         )
-
+        
+        logger.info(f"Successfully fetched records from '{database}'")
         return result
 
     except Exception as e:
+        logger.error(f"Fetch failed for database '{database}': {str(e)}", exc_info=True)
         return json.dumps(
             {"success": False, "error": str(e), "database": database, "ids": ids},
             indent=2,
@@ -149,8 +171,11 @@ async def summarize_records(database: str, ids: List[str]) -> str:
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info(f"Retrieving summaries for {len(ids)} records from database '{database}'")
+    
     try:
         summaries = await ncbi_client.summary(database=database, ids=ids)
+        logger.info(f"Successfully retrieved {len(summaries)} summaries")
 
         summary_data = []
         for summary in summaries:
@@ -171,6 +196,7 @@ async def summarize_records(database: str, ids: List[str]) -> str:
         )
 
     except Exception as e:
+        logger.error(f"Summary retrieval failed for database '{database}': {str(e)}", exc_info=True)
         return json.dumps(
             {"success": False, "error": str(e), "database": database, "ids": ids},
             indent=2,
@@ -195,10 +221,14 @@ async def find_related_records(
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info(f"Finding related records from '{source_database}' to '{target_database}'")
+    logger.debug(f"Source IDs: {ids}")
+    
     try:
         related_ids = await ncbi_client.link(
             database_from=source_database, database_to=target_database, ids=ids
         )
+        logger.info(f"Found {len(related_ids)} related records")
 
         return json.dumps(
             {
@@ -213,6 +243,7 @@ async def find_related_records(
         )
 
     except Exception as e:
+        logger.error(f"Link query failed from '{source_database}' to '{target_database}': {str(e)}", exc_info=True)
         return json.dumps(
             {
                 "success": False,
@@ -239,14 +270,18 @@ async def get_database_info(database: Optional[str] = None) -> str:
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info(f"Retrieving database info for: {database or 'all databases'}")
+    
     try:
         info = await ncbi_client.info(database=database)
-
+        logger.debug(f"Database info retrieved successfully")
+        
         return json.dumps(
             {"success": True, "database": database, "info": info}, indent=2
         )
 
     except Exception as e:
+        logger.error(f"Failed to retrieve database info: {str(e)}", exc_info=True)
         return json.dumps(
             {"success": False, "error": str(e), "database": database}, indent=2
         )
@@ -263,14 +298,18 @@ async def list_databases() -> str:
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info("Listing available NCBI databases")
+    
     try:
         databases = await ncbi_client.get_databases()
-
+        logger.info(f"Retrieved {len(databases)} databases")
+        
         return json.dumps(
             {"success": True, "databases": databases, "count": len(databases)}, indent=2
         )
 
     except Exception as e:
+        logger.error(f"Failed to list databases: {str(e)}", exc_info=True)
         return json.dumps({"success": False, "error": str(e)}, indent=2)
 
 
@@ -305,6 +344,9 @@ async def blast_search(
     ctx = mcp.get_context()
     ncbi_client = ctx.request_context.lifespan_context.ncbi_client
 
+    logger.info(f"Starting BLAST search: program={program}, database={database}")
+    logger.debug(f"BLAST parameters: expect={expect_value}, word_size={word_size}, matrix={matrix}, megablast={megablast}")
+    
     try:
         if output_fmt not in {"full", "summary"}:
             raise ValueError("Invalid output_fmt value. Must be 'full' or 'summary'.")
@@ -320,6 +362,8 @@ async def blast_search(
             output_fmt=output_fmt,
             megablast=megablast,
         )
+        
+        logger.info(f"BLAST search completed: RID={result.rid}, status={result.status}")
 
         return json.dumps(
             {
@@ -334,6 +378,7 @@ async def blast_search(
         )
 
     except Exception as e:
+        logger.error(f"BLAST search failed: program={program}, database={database}, error={str(e)}", exc_info=True)
         return json.dumps(
             {
                 "success": False,
@@ -459,8 +504,38 @@ blast_search(
 """
 
 
+# Add logging level handler to advertise logging capability
+@mcp._mcp_server.set_logging_level()
+async def handle_set_logging_level(level: str) -> None:
+    """Handle dynamic log level changes from MCP client.
+    
+    This handler allows MCP clients to change the server's minimum log level at runtime
+    by sending a logging/setLevel request. The server will only send log messages at or
+    above the specified level to clients via notifications/message notifications.
+    
+    The presence of this handler causes the server to advertise the logging capability
+    in its ServerCapabilities during the MCP initialization handshake.
+    
+    Args:
+        level: The minimum log level (debug, info, notice, warning, error, critical, alert, emergency)
+               Note: Per MCP spec, levels are lowercase
+    """
+    logger.info(f"Log level changed to: {level.upper()}")
+    
+    # Convert MCP log level (lowercase) to Python logging level (uppercase)
+    numeric_level = getattr(logging, level.upper(), logging.INFO)
+    
+    # Update the root logger level
+    logging.getLogger().setLevel(numeric_level)
+    
+    # Also update our specific loggers
+    logging.getLogger("ncbi_mcp_server").setLevel(numeric_level)
+
+
 def main():
     """Main entry point for the server."""
+    # Logging is automatically configured by FastMCP using FASTMCP_LOG_LEVEL environment variable
+    # The MCP client can also dynamically set the log level using the logging/setLevel request
     mcp.run()
 
 
