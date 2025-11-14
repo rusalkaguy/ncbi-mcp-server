@@ -100,7 +100,7 @@ async def test_ncbi_client():
             if blast_result.status == "completed":
                 print("   ✅ BLAST search completed successfully")
                 # log output
-                out_filename = "test4.blast_results.summary.txt"
+                out_filename = "test_results/test4-A.blast_results.summary.txt"
                 with open(out_filename, "w") as out_fh:
                     out_fh.write(str(blast_result))
                 print(f"   💾 Summary results written to '{out_filename}'")
@@ -133,7 +133,7 @@ async def test_ncbi_client():
             if blast_result.status == "completed":
                 print("   ✅ BLAST search completed successfully")
                 # log output
-                out_filename = "test5.blast_results.full.txt"
+                out_filename = "test_results/test4-B.blast_results.full.txt"
                 with open(out_filename, "w") as out_fh:
                     out_fh.write(str(blast_result)) 
                 print(f"   💾 Summary results written to '{out_filename}'")
