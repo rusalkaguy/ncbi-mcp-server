@@ -298,7 +298,7 @@ async def blast_search(
         matrix: Scoring matrix (optional, e.g., BLOSUM62)
         gap_costs: Gap costs (optional, e.g., "11 1")
         output_fmt: Output format ("full" includes alignment strings, "summary" omits them)
-
+        megablast: Whether to use megablast (only for blastn; default: None, True to enable megablast)
     Returns:
         JSON string with BLAST results
     """
