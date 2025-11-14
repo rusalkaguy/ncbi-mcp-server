@@ -280,6 +280,7 @@ class NCBIClient:
         matrix: Optional[str] = None,
         gapcosts: Optional[str] = None,
         output_fmt: str = "full",
+        megablast: bool = None,        
     ) -> BlastResult:
         """Submit a BLAST search."""
         # Use Biopython's BLAST interface
@@ -297,6 +298,7 @@ class NCBIClient:
                 word_size=word_size,
                 matrix_name=matrix,
                 gapcosts=gapcosts,
+                megablast=megablast,
             )
 
             # Parse results

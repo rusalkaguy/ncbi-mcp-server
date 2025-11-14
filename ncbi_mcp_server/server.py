@@ -284,6 +284,7 @@ async def blast_search(
     matrix: Optional[str] = None,
     gap_costs: Optional[str] = None,
     output_fmt: str = "full",
+    megablast: bool = None,
 ) -> str:
     """
     Perform BLAST search using NCBI BLAST.
@@ -317,6 +318,7 @@ async def blast_search(
             matrix=matrix,
             gapcosts=gap_costs,
             output_fmt=output_fmt,
+            megablast=megablast,
         )
 
         return json.dumps(
